@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Phone Uplink - WebRTC</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: #0b0b0b; color: #f5f5f5; }
+    .wrap { padding: 12px; }
+    video { width: 100%; height: auto; background: #000; }
+    #status { margin-top: 10px; color: #cfcfcf; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>Phone - Sender</h3>
+    <video id="local" autoplay playsinline muted></video>
+    <div id="status">Initializing…</div>
+  </div>
+  <script type="module">
+    import { connectSignaling, createPeerConnection } from './webrtc.js';
+
+    const statusEl = document.getElementById('status');
+    const videoEl = document.getElementById('local');
+
+    function setStatus(s) { statusEl.textContent = s; }
+
+    function getRoomId() {
+      const u = new URL(window.location.href);
+      return u.searchParams.get('room') || 'demo';
+    }
+
+    async function start() {
+      const roomId = getRoomId();
+      setStatus('Requesting camera…');
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+      } catch (e) {
+        // Some Android browsers throw TypeError for constrained calls; retry minimal constraints
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } catch (e2) {
+          setStatus('Camera error: ' + ((e2 && e2.name) || (e && e.name) || 'Unknown'));
+          return;
+        }
+      }
+      videoEl.srcObject = stream;
+
+      const { ws, opened } = connectSignaling(roomId, 'phone');
+      await opened;
+      setStatus('Connected to signaling. Waiting for offer…');
+
+      const pc = createPeerConnection((candidate) => {
+        ws.send(JSON.stringify({ type: 'ice', room: roomId, candidate }));
+      }, () => {}, (state) => setStatus('PC state: ' + state));
+
+      // Add video track
+      const track = stream.getVideoTracks()[0];
+      pc.addTrack(track, stream);
+
+      // DataChannel for telemetry
+      const dc = pc.createDataChannel('telemetry');
+      let frameId = 0;
+      function sendTelemetry() {
+        try {
+          dc.readyState === 'open' && dc.send(JSON.stringify({ frame_id: frameId++, capture_ts: Date.now(), note: 'phone capture ts' }));
+        } catch (_) {}
+      }
+      // Send telemetry at ~15Hz as a baseline; viewer will match frames
+      setInterval(sendTelemetry, 66);
+
+      ws.onmessage = async (ev) => {
+        let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+        if (msg.type === 'offer' && msg.room === roomId) {
+          await pc.setRemoteDescription({ type: 'offer', sdp: msg.sdp });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          ws.send(JSON.stringify({ type: 'answer', room: roomId, sdp: answer.sdp }));
+          setStatus('Answered offer. Streaming…');
+        } else if (msg.type === 'ice' && msg.room === roomId) {
+          try { await pc.addIceCandidate(msg.candidate); } catch (_) {}
+        }
+      };
+    }
+
+    start();
+  </script>
+</body>
+</html>
+
+

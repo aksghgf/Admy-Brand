@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Realtime Object Detection Demo - Camera + Overlay</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!--
+  Minimal README (quick start)
+
+  Quick start:
+    cd frontend
+    python3 -m http.server 3000
+
+  Open on desktop:
+    http://localhost:3000
+
+  Open on phone (same Wi‑Fi as laptop):
+    http://<your-laptop-LAN-ip>:3000
+
+  Tip:
+    If iPhone camera doesn’t start over plain HTTP, test with Android Chrome,
+    or we’ll add HTTPS tunneling (e.g., ngrok) later.
+  -->
+</head>
+<body>
+  <main class="page">
+    <div class="camera-container" id="camera-container">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div id="status" role="status" aria-live="polite">
+      <span id="statusText">Initializing…</span>
+      <button id="switchCamera" type="button" title="Switch Camera">Switch Camera</button>
+    </div>
+  </main>
+  <!-- Optional favicon to silence 404 in dev -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
+  <script type="module" src="app.js"></script>
+  
+</body>
+<!-- Notes for iOS compatibility:
+  - uses playsinline on <video>
+  - video is muted to allow autoplay
+  - iOS Safari may require HTTPS when accessing over LAN; to be addressed later
+-->
+</html>
+
+
