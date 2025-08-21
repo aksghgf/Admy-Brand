@@ -1,0 +1,29 @@
+﻿# Node
+**/node_modules/
+.npmrc
+
+# Python/http cache
+**/__pycache__/
+**/.pytest_cache/
+
+# Artifacts
+coverage/
+dist/
+build/
+*.log
+metrics.json
+
+# Local models / large binaries
+frontend/models/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
